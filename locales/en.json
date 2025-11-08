@@ -1,0 +1,18 @@
+{
+  "app": {
+    "name": "TuEje"
+  },
+  "nav": {
+    "home": "Home",
+    "habits": "Habits",
+    "finance": "Finance",
+    "dashboard": "Dashboard",
+    "language": "Language"
+  },
+  "hero": {
+    "title": "TuEje",
+    "subtitle": "A habit tracker focused on wellbeing and personal finance.",
+    "ctaSoon": "Start (soon)",
+    "day1": "Day 1: setup done ✅"
+  }
+}

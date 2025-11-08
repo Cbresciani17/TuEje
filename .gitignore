@@ -39,3 +39,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# Builds / cache
+.next
+out
+dist
+.cache
+
+# Dependencias
+node_modules
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Misceláneo
+.env*
+*.zip
+*.rar
+*.7z

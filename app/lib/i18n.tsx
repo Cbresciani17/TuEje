@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
@@ -52,3 +53,5 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 export function useI18n() {
   return useContext(I18nContext);
 }
+
+

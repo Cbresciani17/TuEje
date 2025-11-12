@@ -1,10 +1,15 @@
 // app/lib/storage.ts
+// Sistema de almacenamiento con datos separados por usuario
+
+import { getCurrentUser } from './auth';
+
 export type Habit = {
   id: string;
   title: string;
   goalPerWeek: number;
   type: 'check' | 'number';
   createdAt: string;
+  userId: string; // ← NUEVO: asociar al usuario
 };
 
 export type HabitLog = {
@@ -13,9 +18,9 @@ export type HabitLog = {
   date: string;
   value?: number;
   done?: boolean;
+  userId: string; // ← NUEVO: asociar al usuario
 };
 
-// ===== NUEVOS TIPOS PARA FINANZAS =====
 export type TransactionType = 'income' | 'expense';
 
 export type TransactionCategory = 
@@ -29,14 +34,23 @@ export type Transaction = {
   category: TransactionCategory;
   amount: number;
   description: string;
-  date: string; // yyyy-mm-dd
+  date: string;
   createdAt: string;
+  userId: string; // ← NUEVO: asociar al usuario
 };
 
+// Claves de localStorage
 const HABITS_KEY = 'tueje_habits';
 const LOGS_KEY = 'tueje_habit_logs';
 const TRANSACTIONS_KEY = 'tueje_transactions';
 
+// Obtener ID del usuario actual
+function getCurrentUserId(): string | null {
+  const user = getCurrentUser();
+  return user?.id || null;
+}
+
+// Funciones auxiliares
 function loadJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -52,58 +66,114 @@ function saveJSON<T>(key: string, data: T) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-// ===== FUNCIONES DE HÁBITOS (sin cambios) =====
+// ===== FUNCIONES DE HÁBITOS =====
+
 export function listHabits(): Habit[] {
-  return loadJSON<Habit[]>(HABITS_KEY, []);
+  const userId = getCurrentUserId();
+  if (!userId) return [];
+  
+  const allHabits = loadJSON<Habit[]>(HABITS_KEY, []);
+  // Filtrar solo los del usuario actual
+  return allHabits.filter(h => h.userId === userId);
 }
 
 export function saveHabit(habit: Habit) {
-  const current = listHabits();
-  const updated = [habit, ...current];
-  saveJSON(HABITS_KEY, updated);
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  // Asegurar que el hábito tenga el userId
+  habit.userId = userId;
+
+  const allHabits = loadJSON<Habit[]>(HABITS_KEY, []);
+  const otherHabits = allHabits.filter(h => h.id !== habit.id);
+  saveJSON(HABITS_KEY, [habit, ...otherHabits]);
 }
 
 export function deleteHabit(id: string) {
-  const updated = listHabits().filter(h => h.id !== id);
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  const allHabits = loadJSON<Habit[]>(HABITS_KEY, []);
+  const updated = allHabits.filter(h => !(h.id === id && h.userId === userId));
   saveJSON(HABITS_KEY, updated);
-  const logs = listLogs().filter(l => l.habitId !== id);
-  saveJSON(LOGS_KEY, logs);
+
+  // Borrar logs asociados
+  const allLogs = loadJSON<HabitLog[]>(LOGS_KEY, []);
+  const updatedLogs = allLogs.filter(l => !(l.habitId === id && l.userId === userId));
+  saveJSON(LOGS_KEY, updatedLogs);
 }
 
+// ===== FUNCIONES DE LOGS =====
+
 export function listLogs(): HabitLog[] {
-  return loadJSON<HabitLog[]>(LOGS_KEY, []);
+  const userId = getCurrentUserId();
+  if (!userId) return [];
+
+  const allLogs = loadJSON<HabitLog[]>(LOGS_KEY, []);
+  // Filtrar solo los del usuario actual
+  return allLogs.filter(l => l.userId === userId);
 }
 
 export function saveLog(log: HabitLog) {
-  const current = listLogs();
-  const without = current.filter(l => !(l.habitId === log.habitId && l.date === log.date));
-  const updated = [log, ...without];
-  saveJSON(LOGS_KEY, updated);
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  // Asegurar que el log tenga el userId
+  log.userId = userId;
+
+  const allLogs = loadJSON<HabitLog[]>(LOGS_KEY, []);
+  const withoutCurrent = allLogs.filter(
+    l => !(l.habitId === log.habitId && l.date === log.date && l.userId === userId)
+  );
+  saveJSON(LOGS_KEY, [log, ...withoutCurrent]);
 }
 
-// ===== NUEVAS FUNCIONES PARA FINANZAS =====
+// ===== FUNCIONES DE FINANZAS =====
+
 export function listTransactions(): Transaction[] {
-  return loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  const userId = getCurrentUserId();
+  if (!userId) return [];
+
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  // Filtrar solo las del usuario actual
+  return allTransactions.filter(t => t.userId === userId);
 }
 
 export function saveTransaction(transaction: Transaction) {
-  const current = listTransactions();
-  const updated = [transaction, ...current];
-  saveJSON(TRANSACTIONS_KEY, updated);
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  // Asegurar que la transacción tenga el userId
+  transaction.userId = userId;
+
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  saveJSON(TRANSACTIONS_KEY, [transaction, ...allTransactions]);
 }
 
 export function updateTransaction(transaction: Transaction) {
-  const current = listTransactions();
-  const updated = current.map(t => t.id === transaction.id ? transaction : t);
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  transaction.userId = userId;
+
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  const updated = allTransactions.map(t => 
+    (t.id === transaction.id && t.userId === userId) ? transaction : t
+  );
   saveJSON(TRANSACTIONS_KEY, updated);
 }
 
 export function deleteTransaction(id: string) {
-  const updated = listTransactions().filter(t => t.id !== id);
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  const updated = allTransactions.filter(t => !(t.id === id && t.userId === userId));
   saveJSON(TRANSACTIONS_KEY, updated);
 }
 
 // ===== UTILIDADES =====
+
 export function todayISO(): string {
   const d = new Date();
   return d.toISOString().slice(0, 10);
@@ -114,6 +184,7 @@ export function uid(): string {
 }
 
 // ===== CATEGORÍAS CON LABELS =====
+
 export const INCOME_CATEGORIES = [
   { value: 'salary', label: 'Salario' },
   { value: 'freelance', label: 'Freelance' },
@@ -136,80 +207,3 @@ export function getCategoryLabel(category: TransactionCategory): string {
   const allCategories = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
   return allCategories.find(c => c.value === category)?.label || category;
 }
-
-
-
-
-// // app/lib/storage.ts
-// export type Habit = {
-//   id: string;
-//   title: string;
-//   goalPerWeek: number; // p.ej. 3 veces/semana
-//   type: 'check' | 'number'; // check = hecho/no hecho; number = cantidad (horas, min)
-//   createdAt: string; // ISO
-// };
-
-// export type HabitLog = {
-//   id: string;
-//   habitId: string;
-//   date: string; // yyyy-mm-dd
-//   value?: number; // para type "number"
-//   done?: boolean; // para type "check"
-// };
-
-// const HABITS_KEY = 'tueje_habits';
-// const LOGS_KEY = 'tueje_habit_logs';
-
-// function loadJSON<T>(key: string, fallback: T): T {
-//   if (typeof window === 'undefined') return fallback;
-//   try {
-//     const raw = localStorage.getItem(key);
-//     return raw ? (JSON.parse(raw) as T) : fallback;
-//   } catch {
-//     return fallback;
-//   }
-// }
-
-// function saveJSON<T>(key: string, data: T) {
-//   if (typeof window === 'undefined') return;
-//   localStorage.setItem(key, JSON.stringify(data));
-// }
-
-// export function listHabits(): Habit[] {
-//   return loadJSON<Habit[]>(HABITS_KEY, []);
-// }
-
-// export function saveHabit(habit: Habit) {
-//   const current = listHabits();
-//   const updated = [habit, ...current];
-//   saveJSON(HABITS_KEY, updated);
-// }
-
-// export function deleteHabit(id: string) {
-//   const updated = listHabits().filter(h => h.id !== id);
-//   saveJSON(HABITS_KEY, updated);
-//   // borrar logs asociados
-//   const logs = listLogs().filter(l => l.habitId !== id);
-//   saveJSON(LOGS_KEY, logs);
-// }
-
-// export function listLogs(): HabitLog[] {
-//   return loadJSON<HabitLog[]>(LOGS_KEY, []);
-// }
-
-// export function saveLog(log: HabitLog) {
-//   const current = listLogs();
-//   // si ya existe un log para el mismo día y hábito, lo reemplazamos
-//   const without = current.filter(l => !(l.habitId === log.habitId && l.date === log.date));
-//   const updated = [log, ...without];
-//   saveJSON(LOGS_KEY, updated);
-// }
-
-// export function todayISO(): string {
-//   const d = new Date();
-//   return d.toISOString().slice(0, 10); // yyyy-mm-dd
-// }
-
-// export function uid(): string {
-//   return Math.random().toString(36).slice(2, 10);
-// }

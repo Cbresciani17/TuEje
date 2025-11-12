@@ -1,9 +1,13 @@
+// app/habits/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import Link from 'next/link';
 import HabitCard from '../components/HabitCard';
 import type { Habit } from '../lib/storage';
+// 💡 Importar AUTH_EVENT
 import { deleteHabit, listHabits, listLogs, saveHabit, todayISO, uid } from '../lib/storage';
+import { AUTH_EVENT } from '../lib/auth';
 
 type FormState = {
   title: string;
@@ -14,11 +18,33 @@ type FormState = {
 export default function HabitsPage() {
   const [form, setForm] = useState<FormState>({ title: '', goalPerWeek: 3, type: 'check' });
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
+  // 🔁 Refresco centralizado (hábitos + logs)
+  const refresh = useCallback(() => {
     setHabits(listHabits());
+    setLogs(listLogs());
   }, []);
+
+  // Carga inicial y Suscripción a Eventos (FIX)
+  useEffect(() => {
+    refresh(); // Carga inicial
+    
+    // ✅ Escuchar eventos de cambio de datos (AUTH_EVENT, storage, focus)
+    const onDataChanged = () => refresh();
+
+    window.addEventListener(AUTH_EVENT, onDataChanged);
+    window.addEventListener('storage', onDataChanged);
+    window.addEventListener('focus', onDataChanged);
+
+    return () => {
+      window.removeEventListener(AUTH_EVENT, onDataChanged);
+      window.removeEventListener('storage', onDataChanged);
+      window.removeEventListener('focus', onDataChanged);
+    };
+  }, [refresh]);
+
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,9 +56,12 @@ export default function HabitsPage() {
       goalPerWeek: Number(form.goalPerWeek) || 1,
       type: form.type,
       createdAt: new Date().toISOString(),
+      // @ts-expect-error: userId lo inyecta storage al persistir (si así lo implementaste).
+      userId: undefined,
     };
     saveHabit(h);
-    setHabits(prev => [h, ...prev]);
+    
+    // ❌ Ya no necesitas llamar a refresh() aquí, el evento en storage.ts lo hace
     setForm({ title: '', goalPerWeek: 3, type: 'check' });
     setShowForm(false);
   };
@@ -40,34 +69,31 @@ export default function HabitsPage() {
   const handleDelete = (id: string) => {
     if (!confirm('¿Eliminar este hábito y todos sus registros?')) return;
     deleteHabit(id);
-    setHabits(prev => prev.filter(h => h.id !== id));
+    // ❌ Ya no necesitas llamar a refresh() aquí
   };
 
-  // Estadísticas
+  // Estadísticas (se mantienen igual)
   const stats = useMemo(() => {
-    const logs = listLogs();
     const today = todayISO();
-    const completedToday = logs.filter(l => l.date === today).length;
-    
-    // Calcular promedio de cumplimiento semanal
+    const completedToday = logs.filter((l) => l.date === today).length;
+
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
       return d.toISOString().slice(0, 10);
     });
-    
-    const weeklyLogs = logs.filter(l => last7Days.includes(l.date));
+
+    const weeklyLogs = logs.filter((l) => last7Days.includes(l.date));
     const totalPossible = habits.length * 7;
-    const weeklyCompletion = totalPossible > 0 
-      ? Math.round((weeklyLogs.length / totalPossible) * 100)
-      : 0;
+    const weeklyCompletion =
+      totalPossible > 0 ? Math.round((weeklyLogs.length / totalPossible) * 100) : 0;
 
     return {
       total: habits.length,
       completedToday,
       weeklyCompletion,
     };
-  }, [habits]);
+  }, [habits, logs]);
 
   return (
     <main className="py-4">
@@ -105,7 +131,7 @@ export default function HabitsPage() {
       {showForm && (
         <form onSubmit={handleCreate} className="mb-6 bg-white border-2 border-indigo-200 rounded-xl p-6 shadow-lg">
           <h3 className="text-lg font-semibold mb-4">Crear nuevo hábito</h3>
-          
+
           <div className="grid gap-4">
             {/* Título */}
             <div>
@@ -116,7 +142,7 @@ export default function HabitsPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Ej: Hacer ejercicio, leer 30 min, meditar..."
                 value={form.title}
-                onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 autoFocus
               />
             </div>
@@ -133,7 +159,7 @@ export default function HabitsPage() {
                   max={7}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   value={form.goalPerWeek}
-                  onChange={(e) => setForm(f => ({ ...f, goalPerWeek: Number(e.target.value) }))}
+                  onChange={(e) => setForm((f) => ({ ...f, goalPerWeek: Number(e.target.value) }))}
                 />
               </div>
 
@@ -145,7 +171,9 @@ export default function HabitsPage() {
                 <select
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500"
                   value={form.type}
-                  onChange={(e) => setForm(f => ({ ...f, type: e.target.value as 'check' | 'number' }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, type: e.target.value as 'check' | 'number' }))
+                  }
                 >
                   <option value="check">✅ Hecho / No hecho</option>
                   <option value="number">🔢 Cantidad (horas, km, etc.)</option>
@@ -192,9 +220,9 @@ export default function HabitsPage() {
             </button>
           </div>
         ) : (
-          habits.map(h => (
+          habits.map((h) => (
             <div key={h.id} className="relative">
-              <HabitCard habit={h} />
+              <HabitCard habit={h} /> 
               <button
                 onClick={() => handleDelete(h.id)}
                 className="absolute top-4 right-4 text-xs text-red-600 hover:text-red-700 hover:underline font-medium"
@@ -221,6 +249,3 @@ export default function HabitsPage() {
     </main>
   );
 }
-
-
-

@@ -1,8 +1,11 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { login, register, isAuthenticated } from '../lib/auth';
+// Usamos las funciones locales de registro y login
+import { login, register, isAuthenticated } from '../lib/auth'; 
+// Usamos NextAuth para el SSO
+import { signIn } from "next-auth/react"; 
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,12 +18,16 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Redirigir si la sesión local está activa (antes de que NextAuth cargue)
   useEffect(() => {
+    // Nota: Aunque NextAuth es el futuro, mantenemos isAuthenticated()
+    // para manejar los usuarios que ya están logueados localmente.
     if (isAuthenticated()) {
       router.push('/');
     }
   }, [router]);
 
+  // Lógica original de submit para Login/Register LOCAL
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -29,6 +36,7 @@ export default function LoginPage() {
     if (isLoginMode) {
       const result = login(formData.email, formData.password);
       if (result.success) {
+        // En login local, redirigimos directamente
         router.push('/');
       } else {
         setError(result.error || 'Error al iniciar sesión');
@@ -36,6 +44,7 @@ export default function LoginPage() {
     } else {
       const result = register(formData.email, formData.password, formData.name);
       if (result.success) {
+        // Después de registrar, iniciamos sesión automáticamente
         const loginResult = login(formData.email, formData.password);
         if (loginResult.success) {
           router.push('/');
@@ -47,6 +56,13 @@ export default function LoginPage() {
 
     setLoading(false);
   };
+  
+  // Función para Login con Google SSO
+  const handleGoogleSignIn = () => {
+    // Usamos signIn de NextAuth con callbackUrl
+    signIn('google', { callbackUrl: '/' });
+  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 px-4">
@@ -59,6 +75,28 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* BOTÓN DE GOOGLE (Integrado al diseño) */}
+          <button
+            onClick={handleGoogleSignIn}
+            className="w-full flex items-center justify-center gap-2 mb-6 px-4 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-400 transition shadow-sm"
+          >
+            {/* Usamos el SVG de Google para mejor diseño */}
+            <svg className="w-6 h-6" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.56l5.3-5.3c-3.66-3.77-8.88-5.76-14.51-5.76c-11.39 0-21.16 8.35-23.49 19.34h6.02c2.1-7.23 8.3-12.65 17.06-12.65z"/>
+              <path fill="#4285F4" d="M46.7 24.5h-2.14c0-.98-.06-1.92-.17-2.85h-20.39v6h11.75c-.56 2.92-2.16 5.37-4.52 7l4.88 4.88c3.57-3.29 5.66-8.22 5.66-14.15z"/>
+              <path fill="#FBBC04" d="M9.5 29.5c-.47-1.39-.73-2.9-.73-4.5s.26-3.11.73-4.5v-6.02h-6.02c-.93 1.83-1.48 3.82-1.48 6.52s.55 4.69 1.48 6.52l6.02-6.02z"/>
+              <path fill="#34A853" d="M24 43.5c5.56 0 10.42-2.18 14.15-5.66l-4.88-4.88c-2.36 1.63-4.78 2.72-8.32 2.72c-8.76 0-14.96-5.42-17.06-12.65h-6.02c2.33 10.99 12.1 19.34 23.49 19.34z"/>
+            </svg>
+            Continuar con Google
+          </button>
+          
+          {/* Separador */}
+          <div className="relative flex justify-center items-center mb-6">
+            <div className="absolute w-full border-t border-gray-300" />
+            <span className="relative bg-white px-2 text-sm text-gray-500">o usa tu email</span>
+          </div>
+
+          {/* Selector de modo Login/Register */}
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => {
@@ -88,6 +126,7 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* Formulario de Login/Register Local */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLoginMode && (
               <div>
@@ -148,36 +187,6 @@ export default function LoginPage() {
               {loading ? 'Procesando...' : isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta'}
             </button>
           </form>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            {isLoginMode ? (
-              <p>
-                ¿No tienes cuenta?{' '}
-                <button
-                  onClick={() => {
-                    setIsLoginMode(false);
-                    setError('');
-                  }}
-                  className="text-indigo-600 font-medium hover:underline"
-                >
-                  Regístrate aquí
-                </button>
-              </p>
-            ) : (
-              <p>
-                ¿Ya tienes cuenta?{' '}
-                <button
-                  onClick={() => {
-                    setIsLoginMode(true);
-                    setError('');
-                  }}
-                  className="text-indigo-600 font-medium hover:underline"
-                >
-                  Inicia sesión
-                </button>
-              </p>
-            )}
-          </div>
         </div>
 
         <div className="mt-4 text-center text-sm text-gray-500">

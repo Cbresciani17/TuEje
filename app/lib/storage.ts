@@ -1,7 +1,7 @@
 // app/lib/storage.ts
 // Sistema de almacenamiento con datos separados por usuario
 
-import { getCurrentUser } from './auth';
+import { getCurrentUser, AUTH_EVENT } from './auth'; 
 
 export type Habit = {
   id: string;
@@ -9,7 +9,7 @@ export type Habit = {
   goalPerWeek: number;
   type: 'check' | 'number';
   createdAt: string;
-  userId: string; // ← NUEVO: asociar al usuario
+  userId: string; // ← Asociar al usuario
 };
 
 export type HabitLog = {
@@ -18,7 +18,7 @@ export type HabitLog = {
   date: string;
   value?: number;
   done?: boolean;
-  userId: string; // ← NUEVO: asociar al usuario
+  userId: string; // ← Asociar al usuario
 };
 
 export type TransactionType = 'income' | 'expense';
@@ -36,7 +36,7 @@ export type Transaction = {
   description: string;
   date: string;
   createdAt: string;
-  userId: string; // ← NUEVO: asociar al usuario
+  userId: string; // ← Asociar al usuario
 };
 
 // Claves de localStorage
@@ -44,13 +44,21 @@ const HABITS_KEY = 'tueje_habits';
 const LOGS_KEY = 'tueje_habit_logs';
 const TRANSACTIONS_KEY = 'tueje_transactions';
 
+// 💡 Nueva utilidad para notificar a toda la aplicación
+function notifyDataChanged() {
+  if (typeof window !== 'undefined') {
+    // Usamos el evento AUTH_EVENT para señalizar cambios de datos
+    window.dispatchEvent(new Event(AUTH_EVENT)); 
+  }
+}
+
 // Obtener ID del usuario actual
 function getCurrentUserId(): string | null {
   const user = getCurrentUser();
   return user?.id || null;
 }
 
-// Funciones auxiliares
+// Funciones auxiliares (loadJSON, saveJSON, uid, todayISO, etc.)
 function loadJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -66,6 +74,16 @@ function saveJSON<T>(key: string, data: T) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
+export function todayISO(): string {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+export function uid(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+
 // ===== FUNCIONES DE HÁBITOS =====
 
 export function listHabits(): Habit[] {
@@ -73,7 +91,6 @@ export function listHabits(): Habit[] {
   if (!userId) return [];
   
   const allHabits = loadJSON<Habit[]>(HABITS_KEY, []);
-  // Filtrar solo los del usuario actual
   return allHabits.filter(h => h.userId === userId);
 }
 
@@ -81,12 +98,13 @@ export function saveHabit(habit: Habit) {
   const userId = getCurrentUserId();
   if (!userId) return;
 
-  // Asegurar que el hábito tenga el userId
   habit.userId = userId;
 
   const allHabits = loadJSON<Habit[]>(HABITS_KEY, []);
   const otherHabits = allHabits.filter(h => h.id !== habit.id);
   saveJSON(HABITS_KEY, [habit, ...otherHabits]);
+  
+  notifyDataChanged(); 
 }
 
 export function deleteHabit(id: string) {
@@ -97,10 +115,11 @@ export function deleteHabit(id: string) {
   const updated = allHabits.filter(h => !(h.id === id && h.userId === userId));
   saveJSON(HABITS_KEY, updated);
 
-  // Borrar logs asociados
   const allLogs = loadJSON<HabitLog[]>(LOGS_KEY, []);
   const updatedLogs = allLogs.filter(l => !(l.habitId === id && l.userId === userId));
   saveJSON(LOGS_KEY, updatedLogs);
+  
+  notifyDataChanged(); 
 }
 
 // ===== FUNCIONES DE LOGS =====
@@ -110,7 +129,6 @@ export function listLogs(): HabitLog[] {
   if (!userId) return [];
 
   const allLogs = loadJSON<HabitLog[]>(LOGS_KEY, []);
-  // Filtrar solo los del usuario actual
   return allLogs.filter(l => l.userId === userId);
 }
 
@@ -118,7 +136,6 @@ export function saveLog(log: HabitLog) {
   const userId = getCurrentUserId();
   if (!userId) return;
 
-  // Asegurar que el log tenga el userId
   log.userId = userId;
 
   const allLogs = loadJSON<HabitLog[]>(LOGS_KEY, []);
@@ -126,6 +143,8 @@ export function saveLog(log: HabitLog) {
     l => !(l.habitId === log.habitId && l.date === log.date && l.userId === userId)
   );
   saveJSON(LOGS_KEY, [log, ...withoutCurrent]);
+  
+  notifyDataChanged();
 }
 
 // ===== FUNCIONES DE FINANZAS =====
@@ -134,8 +153,8 @@ export function listTransactions(): Transaction[] {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
-  // Filtrar solo las del usuario actual
+  // ✅ FIX: Se define la variable local allTransactions
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []); 
   return allTransactions.filter(t => t.userId === userId);
 }
 
@@ -143,11 +162,11 @@ export function saveTransaction(transaction: Transaction) {
   const userId = getCurrentUserId();
   if (!userId) return;
 
-  // Asegurar que la transacción tenga el userId
   transaction.userId = userId;
 
-  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []); 
   saveJSON(TRANSACTIONS_KEY, [transaction, ...allTransactions]);
+  notifyDataChanged();
 }
 
 export function updateTransaction(transaction: Transaction) {
@@ -156,34 +175,26 @@ export function updateTransaction(transaction: Transaction) {
 
   transaction.userId = userId;
 
-  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []); 
   const updated = allTransactions.map(t => 
     (t.id === transaction.id && t.userId === userId) ? transaction : t
   );
   saveJSON(TRANSACTIONS_KEY, updated);
+  notifyDataChanged();
 }
 
 export function deleteTransaction(id: string) {
   const userId = getCurrentUserId();
   if (!userId) return;
 
-  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []);
+  const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []); 
   const updated = allTransactions.filter(t => !(t.id === id && t.userId === userId));
   saveJSON(TRANSACTIONS_KEY, updated);
+  notifyDataChanged();
 }
 
-// ===== UTILIDADES =====
 
-export function todayISO(): string {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
-}
-
-export function uid(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-// ===== CATEGORÍAS CON LABELS =====
+// ===== UTILIDADES Y CATEGORÍAS (Se mantienen igual) =====
 
 export const INCOME_CATEGORIES = [
   { value: 'salary', label: 'Salario' },

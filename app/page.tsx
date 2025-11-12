@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { listHabits, listLogs, listTransactions, todayISO } from './lib/storage';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { listHabits, listLogs, listTransactions, todayISO } from "./lib/storage"; 
+import { AUTH_EVENT } from "./lib/auth";
 
-export default function Home() {
+export default function HomePage() {
   const [stats, setStats] = useState({
     habitsTotal: 0,
     habitsCompletedToday: 0,
@@ -13,17 +14,18 @@ export default function Home() {
     weekStreak: 0,
   });
 
-  useEffect(() => {
+  const calculateStats = () => {
+    // Lee siempre filtrado por el usuario actual (lo hace storage.ts)
     const habits = listHabits();
-    const logs = listLogs();
+    const logs = listLogs(); // Necesitas logs para la racha y completados hoy
     const transactions = listTransactions();
     const today = todayISO();
 
-    // Hábitos completados hoy
+    // 1. Hábitos completados hoy
     const todayLogs = logs.filter(l => l.date === today);
     const habitsCompletedToday = todayLogs.length;
 
-    // Balance actual
+    // 2. Balance actual
     const income = transactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -31,8 +33,10 @@ export default function Home() {
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
     const currentBalance = income - expense;
+    
+    const transactionsTotal = transactions.length;
 
-    // Calcular racha de la semana (días con al menos 1 hábito completado)
+    // 3. Calcular racha de la semana (días con al menos 1 hábito completado)
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -46,11 +50,39 @@ export default function Home() {
     setStats({
       habitsTotal: habits.length,
       habitsCompletedToday,
-      transactionsTotal: transactions.length,
+      transactionsTotal,
       currentBalance,
       weekStreak: daysWithActivity,
     });
+  };
+
+  useEffect(() => {
+    // primera carga
+    calculateStats();
+
+    // 🔔 escuchar cambios de sesión propios y de otras pestañas (como en tu código)
+    const onAuth = () => calculateStats();
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key.startsWith("tueje_")) calculateStats();
+    };
+    const onFocus = () => calculateStats();
+
+    window.addEventListener(AUTH_EVENT, onAuth);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      window.removeEventListener(AUTH_EVENT, onAuth);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
+
+  // 💡 Lógica para mostrar el balance con signo
+  const formatBalance = (balance: number) => {
+      const sign = balance < 0 ? '-' : '';
+      return `${sign}$${Math.abs(balance).toLocaleString()}`;
+  };
 
   const features = [
     {
@@ -66,7 +98,8 @@ export default function Home() {
       title: 'Finanzas',
       icon: '💰',
       description: 'Control de ingresos y gastos',
-      stats: `Balance: $${stats.currentBalance.toLocaleString()}`,
+      // Aplicar formato para el stat de la tarjeta de feature
+      stats: `Balance: ${formatBalance(stats.currentBalance)}`,
       link: '/finance',
       color: 'green',
       gradient: 'from-green-500 to-emerald-600',
@@ -83,6 +116,7 @@ export default function Home() {
   ];
 
   return (
+    // Usa section para que ocupe todo el espacio disponible
     <section className="min-h-[calc(100vh-8rem)] flex flex-col">
       {/* Hero Section */}
       <div className="text-center py-12 px-4">
@@ -102,22 +136,27 @@ export default function Home() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 px-4">
+        {/* Tarjeta 1: Hábitos Totales */}
         <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
           <p className="text-sm text-indigo-700 font-medium">Hábitos</p>
           <p className="text-3xl font-bold text-indigo-900 mt-1">{stats.habitsTotal}</p>
         </div>
+        {/* Tarjeta 2: Racha Semanal */}
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
           <p className="text-sm text-green-700 font-medium">Racha</p>
           <p className="text-3xl font-bold text-green-900 mt-1">{stats.weekStreak} 🔥</p>
         </div>
+        {/* Tarjeta 3: Total Transacciones */}
         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
           <p className="text-sm text-blue-700 font-medium">Transacciones</p>
           <p className="text-3xl font-bold text-blue-900 mt-1">{stats.transactionsTotal}</p>
         </div>
+        {/* Tarjeta 4: Balance */}
         <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4">
           <p className="text-sm text-yellow-700 font-medium">Balance</p>
           <p className={`text-3xl font-bold mt-1 ${stats.currentBalance >= 0 ? 'text-green-900' : 'text-red-900'}`}>
-            ${Math.abs(stats.currentBalance).toLocaleString()}
+            {/* ✅ FIX: Muestra el signo '-' si es negativo, y luego el valor absoluto */}
+            {formatBalance(stats.currentBalance)}
           </p>
         </div>
       </div>
@@ -148,8 +187,8 @@ export default function Home() {
               </p>
               
               {/* Stats */}
-              <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium bg-${feature.color}-100 text-${feature.color}-800`}>
-                {feature.stats}
+              <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800`}>
+                {feature.stats} 
               </div>
               
               {/* Arrow */}
@@ -190,4 +229,3 @@ export default function Home() {
     </section>
   );
 }
-

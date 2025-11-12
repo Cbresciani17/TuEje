@@ -1,24 +1,24 @@
-
-// app/layout.tsx
-import './globals.css';
-import Header from './components/Header';
-import type { Metadata } from 'next';
+import "./globals.css";
+import type { Metadata } from "next";
+import Header from "./components/Header";
+import { SessionWrapper } from "./providers/SessionWrapper";
 
 export const metadata: Metadata = {
-  title: 'TuEje',
-  description: 'Tu habit & finance tracker',
+  title: "TuEje",
+  description: "App personal de hábitos y finanzas",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body className="bg-gray-50 text-gray-900">
-        <Header />
-        <main className="max-w-5xl mx-auto px-4 py-6">{children}</main>
+        <SessionWrapper>
+          <Header />
+          {/* 💡 RESTAURACIÓN CLAVE: El tag <main> con las clases de centrado */}
+          <main className="max-w-5xl mx-auto px-4 py-6">
+            {children}
+          </main>
+        </SessionWrapper>
       </body>
     </html>
   );

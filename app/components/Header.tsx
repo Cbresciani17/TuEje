@@ -1,14 +1,13 @@
-// app/components/Header.tsx
 "use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-// 💡 Importamos la función de sincronización y el evento
 import { getCurrentUser, logout, syncNextAuthUser, AUTH_EVENT } from "../lib/auth";
+import { useI18n } from "../lib/i18n";
+import LanguageSwitcher from "./LanguageSwitcher";
 
-// --- Función auxiliar para los enlaces de navegación ---
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const active =
@@ -25,7 +24,6 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   );
 }
 
-// --- Componente del menú del usuario ---
 function UserMenu({
   user,
   isSSO,
@@ -36,7 +34,8 @@ function UserMenu({
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const name = user.name ?? "Usuario";
+  const { t } = useI18n();
+  const name = user.name ?? t('common.user');
   const email = user.email ?? "";
 
   return (
@@ -70,12 +69,12 @@ function UserMenu({
             </div>
             <button
               onClick={() => {
-                onLogout(); 
-                setOpen(false); // Cierra el menú después del logout
+                onLogout();
+                setOpen(false);
               }}
               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
             >
-              🚪 Cerrar sesión
+              🚪 {t('common.logout')}
             </button>
           </div>
         </>
@@ -84,61 +83,55 @@ function UserMenu({
   );
 }
 
-// --- HEADER PRINCIPAL ---
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { t } = useI18n();
 
-  // Estado que almacena el usuario local (sincronizado)
   const [syncedUser, setSyncedUser] = useState(getCurrentUser());
 
   const isLoading = status === "loading";
   const isSSO = !!session?.user;
   const user = session?.user || syncedUser;
 
-  // Lógica central: Sincronización y Redirección
   useEffect(() => {
     if (isLoading) return;
 
     let currentUser = getCurrentUser();
 
-    // 1. SINCRONIZACIÓN SSO -> LOCAL STORAGE
     if (isSSO && session.user.email && session.user.name) {
-        // ✅ Escribe el ID de Google en localStorage
-        const newSyncedUser = syncNextAuthUser(session.user);
-        if (newSyncedUser && newSyncedUser.id !== currentUser?.id) {
-            setSyncedUser(newSyncedUser);
-            currentUser = newSyncedUser;
-        }
-    } 
-    
-    // 2. Escucha el evento AUTH_EVENT para actualizar el estado sin bucles
+      const newSyncedUser = syncNextAuthUser(session.user);
+      if (newSyncedUser && newSyncedUser.id !== currentUser?.id) {
+        setSyncedUser(newSyncedUser);
+        currentUser = newSyncedUser;
+      }
+    }
+
     const handleAuthChange = () => {
-        setSyncedUser(getCurrentUser());
+      setSyncedUser(getCurrentUser());
     };
 
     window.addEventListener(AUTH_EVENT, handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    window.addEventListener('focus', handleAuthChange);
 
-
-    // 3. REDIRECCIÓN
     if (!user && pathname !== "/login") {
       router.push("/login");
     }
-    
-    return () => {
-        window.removeEventListener(AUTH_EVENT, handleAuthChange);
-    };
-    
-    // El eslint-disable se mantiene, pero la lógica de evento lo mejora
-  }, [isLoading, session, pathname, router, isSSO, user]); 
 
+    return () => {
+      window.removeEventListener(AUTH_EVENT, handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+      window.removeEventListener('focus', handleAuthChange);
+    };
+  }, [isLoading, session, pathname, router, isSSO, user]);
 
   const handleLogout = async () => {
     if (isSSO) {
       await signOut({ callbackUrl: "/login", redirect: false });
     }
-    
+
     logout();
     setSyncedUser(null);
     router.push("/login");
@@ -153,7 +146,7 @@ export default function Header() {
           <Link href="/" className="font-semibold text-lg">
             Tu<span className="text-violet-600">Eje</span>
           </Link>
-          <div className="text-sm text-gray-500">Cargando...</div>
+          <div className="text-sm text-gray-500">{t('common.loading')}</div>
         </div>
       </header>
     );
@@ -166,20 +159,23 @@ export default function Header() {
         </Link>
 
         <nav className="flex items-center gap-2">
-          <NavLink href="/">Inicio</NavLink>
-          <NavLink href="/habits">Hábitos</NavLink>
-          <NavLink href="/finance">Finanzas</NavLink>
-          <NavLink href="/dashboard">Dashboard</NavLink>
+          <NavLink href="/">{t('nav.home')}</NavLink>
+          <NavLink href="/habits">{t('nav.habits')}</NavLink>
+          <NavLink href="/finance">{t('nav.finance')}</NavLink>
+          <NavLink href="/dashboard">{t('nav.dashboard')}</NavLink>
         </nav>
 
-        <div className="relative">
-          {user && (
-            <UserMenu 
-                user={{ ...user, image: session?.user?.image }} // Pasamos la URL de la imagen de Google
-                isSSO={isSSO} 
-                onLogout={handleLogout} 
-            />
-          )}
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <div className="relative">
+            {user && (
+              <UserMenu
+                user={{ ...user, image: session?.user?.image }}
+                isSSO={isSSO}
+                onLogout={handleLogout}
+              />
+            )}
+          </div>
         </div>
       </div>
     </header>

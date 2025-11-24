@@ -10,12 +10,21 @@ import {
   saveTransaction,
   todayISO,
   uid,
+  getUserCurrency,
+  setUserCurrency,
   type Transaction,
   type TransactionCategory,
   type TransactionType,
 } from '../lib/storage';
 import FinanceCharts from '../components/FinanceCharts';
-import { useI18n } from '../lib/i18n';
+import { useI18n } from '../lib/i18n'; 
+import { 
+  getExchangeRates, 
+  convertAmount, 
+  CURRENCIES, 
+  getCurrencySymbol, 
+  getCurrencyFlag 
+} from '../lib/useCurrency';
 
 type FormState = {
   type: TransactionType;
@@ -28,7 +37,8 @@ type FormState = {
 type Period = 'month' | '3months' | 'year' | 'all';
 
 export default function FinancePage() {
-  const { t, lang } = useI18n();
+  const { t, lang } = useI18n(); 
+
   const [form, setForm] = useState<FormState>({
     type: 'expense',
     category: 'food',
@@ -41,10 +51,43 @@ export default function FinancePage() {
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [period, setPeriod] = useState<Period>('month');
   const [showCharts, setShowCharts] = useState(true);
+  
+  const [selectedCurrency, setSelectedCurrency] = useState(getUserCurrency());
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
+  const [loadingRates, setLoadingRates] = useState(true);
 
+  // 1. Cargar tasas de cambio (API Externa)
+  useEffect(() => {
+    const loadRates = async () => {
+      setLoadingRates(true);
+      const rates = await getExchangeRates('USD'); 
+      setExchangeRates(rates);
+      setLoadingRates(false);
+    };
+    loadRates();
+  }, []);
+
+  // 2. Cargar transacciones desde storage
   useEffect(() => {
     setTransactions(listTransactions());
-  }, []);
+  }, []); 
+
+  // Manejar cambio de moneda
+  const handleCurrencyChange = (newCurrency: string) => {
+    setSelectedCurrency(newCurrency);
+    setUserCurrency(newCurrency); 
+  };
+
+  // Convertir una transacción a la moneda seleccionada
+  const convertTransaction = (transaction: Transaction): number => {
+    const fromCurrency = transaction.currency || getUserCurrency(); 
+    return convertAmount(
+      transaction.amount,
+      fromCurrency,
+      selectedCurrency,
+      exchangeRates
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +103,8 @@ export default function FinancePage() {
       description: form.description.trim(),
       date: form.date,
       createdAt: new Date().toISOString(),
+      currency: selectedCurrency, 
+      userId: '', 
     };
 
     saveTransaction(transaction);
@@ -74,7 +119,7 @@ export default function FinancePage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm(t('finance.deleteConfirm'))) return;
+    if (!confirm(t('finance.deleteConfirm'))) return; 
     deleteTransaction(id);
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
@@ -95,18 +140,25 @@ export default function FinancePage() {
   }, [transactions, filter]);
 
   const summary = useMemo(() => {
+    if (loadingRates) return { income: 0, expense: 0, balance: 0 };
+    
     const income = transactions
       .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + convertTransaction(t), 0);
+    
     const expense = transactions
       .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + convertTransaction(t), 0);
+    
     return { income, expense, balance: income - expense };
-  }, [transactions]);
+  }, [transactions, exchangeRates, selectedCurrency, loadingRates]);
+
+  const currencySymbol = getCurrencySymbol(selectedCurrency);
+  const currencyFlag = getCurrencyFlag(selectedCurrency);
 
   return (
     <main className="py-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-semibold">{t('finance.title')}</h1>
           <p className="text-gray-600 mt-1">{t('finance.subtitle')}</p>
@@ -119,24 +171,50 @@ export default function FinancePage() {
         </button>
       </div>
 
+      {/* 🆕 SELECTOR GLOBAL DE MONEDA (Fix Título) */}
+      <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">
+              {t('finance.currencyDisplayTitle')}
+            </h3>
+            <p className="text-xs text-gray-600">
+              {t('finance.currencyDisplaySubtitle')}
+            </p>
+          </div>
+          <select
+            value={selectedCurrency}
+            onChange={(e) => handleCurrencyChange(e.target.value)}
+            disabled={loadingRates}
+            className="px-4 py-3 border-2 border-indigo-300 rounded-lg bg-white font-medium text-lg min-w-[180px] disabled:opacity-50"
+          >
+            {CURRENCIES.map(c => (
+              <option key={c.code} value={c.code}>
+                {c.flag} {c.code} - {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Resumen */}
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
           <p className="text-sm text-green-700 font-medium">{t('finance.income')}</p>
           <p className="text-2xl font-bold text-green-900 mt-1">
-            ${summary.income.toLocaleString()}
+            {loadingRates ? '...' : `${currencyFlag} ${currencySymbol}${summary.income.toLocaleString(lang, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
           </p>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-sm text-red-700 font-medium">{t('finance.expenses')}</p>
           <p className="text-2xl font-bold text-red-900 mt-1">
-            ${summary.expense.toLocaleString()}
+            {loadingRates ? '...' : `${currencyFlag} ${currencySymbol}${summary.expense.toLocaleString(lang, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
           </p>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <p className="text-sm text-blue-700 font-medium">{t('finance.balance')}</p>
           <p className={`text-2xl font-bold mt-1 ${summary.balance >= 0 ? 'text-blue-900' : 'text-red-900'}`}>
-            ${summary.balance.toLocaleString()}
+            {loadingRates ? '...' : `${currencyFlag} ${currencySymbol}${summary.balance.toLocaleString(lang, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
           </p>
         </div>
       </div>
@@ -157,7 +235,7 @@ export default function FinancePage() {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {t('finance.incomeType')}
+                {t('finance.incomeType')} 
               </button>
               <button
                 type="button"
@@ -192,7 +270,9 @@ export default function FinancePage() {
 
             {/* Monto */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('finance.amount')}</label>
+              <label className="block text-sm font-medium text-gray-700">
+                {t('finance.amount')} ({currencySymbol} {selectedCurrency})
+              </label>
               <input
                 type="number"
                 min="0"
@@ -235,7 +315,7 @@ export default function FinancePage() {
               type="submit"
               className="px-5 py-2 rounded-xl bg-indigo-600 text-white font-medium shadow hover:bg-indigo-700 transition"
             >
-              {t('finance.addTransaction')}
+              {t('finance.addTransaction')} 
             </button>
           </div>
         </div>
@@ -264,7 +344,14 @@ export default function FinancePage() {
 
           {/* Gráficos */}
           <div className="mt-6">
-            <FinanceCharts transactions={transactions} period={period} />
+            <FinanceCharts 
+              transactions={transactions.map(transaction => ({ 
+                ...transaction,
+                amount: convertTransaction(transaction), 
+                currency: selectedCurrency,
+              }))} 
+              period={period} 
+            />
           </div>
         </>
       ) : (
@@ -289,7 +376,7 @@ export default function FinancePage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {t('finance.incomeType')}
+              💰 {t('finance.incomeType')}
             </button>
             <button
               onClick={() => setFilter('expense')}
@@ -299,7 +386,7 @@ export default function FinancePage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {t('finance.expenseType')}
+              💸 {t('finance.expenseType')}
             </button>
           </div>
 
@@ -310,46 +397,67 @@ export default function FinancePage() {
                 {t('finance.noTransactions')}
               </div>
             ) : (
-              filteredTransactions.map(t => (
-                <div
-                  key={t.id}
-                  className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          t.type === 'income'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {getCategoryLabel(t.category)}
-                      </span>
-                      <span className="text-sm text-gray-500">{t.date}</span>
+              filteredTransactions.map(transaction => {
+                const convertedAmount = convertTransaction(transaction);
+                const isExpense = transaction.type === 'expense';
+                const originalCurrency = transaction.currency || selectedCurrency;
+                
+                const showConversion = (originalCurrency !== selectedCurrency) && !loadingRates; 
+                
+                const originalCurrencySymbol = getCurrencySymbol(originalCurrency);
+
+                return (
+                  <div
+                    key={transaction.id}
+                    className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            isExpense
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}
+                        >
+                          {getCategoryLabel(transaction.category)} 
+                        </span>
+                        <span className="text-sm text-gray-500">{transaction.date}</span>
+                        {/* 💡 ARREGLO: Mostrar la conversión si es necesaria */}
+                        {showConversion && (
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                            {t('finance.original')}: {originalCurrencySymbol}{transaction.amount.toLocaleString(lang, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </span>
+                        )}
+                      </div>
+                      {transaction.description && (
+                        <p className="text-sm text-gray-700 mt-1">{transaction.description}</p>
+                      )}
                     </div>
-                    {t.description && (
-                      <p className="text-sm text-gray-700 mt-1">{t.description}</p>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span
+                          className={`text-lg font-bold ${
+                            isExpense ? 'text-red-600' : 'text-green-600'
+                          }`}
+                        >
+                          {isExpense ? '-' : '+'}{currencySymbol}{convertedAmount.toLocaleString(lang, {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                          })}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(transaction.id)}
+                        className="text-xs text-red-600 hover:underline"
+                        title={t('common.delete')} 
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`text-lg font-bold ${
-                        t.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
-                    </span>
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      className="text-xs text-red-600 hover:underline"
-                      title={t('common.delete')}
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </>
@@ -357,6 +465,3 @@ export default function FinancePage() {
     </main>
   );
 }
-
-
-

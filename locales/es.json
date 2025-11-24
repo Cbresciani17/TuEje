@@ -132,7 +132,10 @@
       "cumulativeBalance": "Balance Acumulado",
       "topCategories": "Top 5 Categorías de Gasto",
       "month": "Mes"
-    }
+    },
+    "currencyDisplayTitle": "💱 Moneda de Visualización",
+    "currencyDisplaySubtitle": "Todas las transacciones se mostrarán en esta moneda",
+    "original": "Original"
   },
   "dashboard": {
     "title": "Dashboard",

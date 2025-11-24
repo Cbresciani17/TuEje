@@ -1,5 +1,5 @@
 // app/lib/storage.ts
-// Sistema de almacenamiento con datos separados por usuario
+// Sistema de almacenamiento con datos separados por usuario + soporte multi-moneda
 
 import { getCurrentUser, AUTH_EVENT } from './auth'; 
 
@@ -37,14 +37,18 @@ export type Transaction = {
   date: string;
   createdAt: string;
   userId: string;
+  currency: string; // 🆕 Moneda en la que se guardó
 };
 
+// Claves de localStorage
 const HABITS_KEY = 'tueje_habits';
 const LOGS_KEY = 'tueje_habit_logs';
 const TRANSACTIONS_KEY = 'tueje_transactions';
+const USER_CURRENCY_KEY = 'tueje_user_currency'; // 🆕 (Tu adición)
 
 function notifyDataChanged() {
   if (typeof window !== 'undefined') {
+    // 💡 Usamos AUTH_EVENT para notificar cambios de datos (tu amigo y yo acordamos)
     window.dispatchEvent(new Event(AUTH_EVENT)); 
   }
 }
@@ -76,6 +80,28 @@ export function todayISO(): string {
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+// 🆕 ===== FUNCIONES DE MONEDA (Tu adición) =====
+
+export function getUserCurrency(): string {
+  if (typeof window === 'undefined') return 'USD'; // Usar USD como base para la API
+  const userId = getCurrentUserId();
+  if (!userId) return 'USD';
+  
+  const allPrefs = loadJSON<Record<string, string>>(USER_CURRENCY_KEY, {});
+  return allPrefs[userId] || 'USD';
+}
+
+export function setUserCurrency(currency: string) {
+  if (typeof window === 'undefined') return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
+  
+  const allPrefs = loadJSON<Record<string, string>>(USER_CURRENCY_KEY, {});
+  allPrefs[userId] = currency;
+  saveJSON(USER_CURRENCY_KEY, allPrefs);
+  notifyDataChanged();
 }
 
 // ===== FUNCIONES DE HÁBITOS =====
@@ -156,6 +182,11 @@ export function saveTransaction(transaction: Transaction) {
   if (!userId) return;
 
   transaction.userId = userId;
+  
+  // 🆕 Si no tiene currency, usar la del usuario
+  if (!transaction.currency) {
+    transaction.currency = getUserCurrency();
+  }
 
   const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []); 
   saveJSON(TRANSACTIONS_KEY, [transaction, ...allTransactions]);
@@ -186,7 +217,7 @@ export function deleteTransaction(id: string) {
   notifyDataChanged();
 }
 
-// ===== CATEGORÍAS =====
+// ===== UTILIDADES Y CATEGORÍAS =====
 
 export const INCOME_CATEGORIES = [
   { value: 'salary', label: 'Salario' },
@@ -206,10 +237,7 @@ export const EXPENSE_CATEGORIES = [
   { value: 'other-expense', label: 'Otros gastos' },
 ] as const;
 
-// ⚠️ NOTA: Esta función usa las etiquetas estáticas en español por simplicidad.
-// Para internacionalizar completamente, se debería usar el hook useI18n en los componentes.
 export function getCategoryLabel(category: TransactionCategory): string {
   const allCategories = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
   return allCategories.find(c => c.value === category)?.label || category;
 }
-

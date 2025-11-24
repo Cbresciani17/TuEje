@@ -132,7 +132,10 @@
       "cumulativeBalance": "Cumulative Balance",
       "topCategories": "Top 5 Expense Categories",
       "month": "Month"
-    }
+    },
+    "currencyDisplayTitle": "💱 Currency Display",
+    "currencyDisplaySubtitle": "All transactions will be shown in this currency",
+    "original": "Original"
   },
   "dashboard": {
     "title": "Dashboard",

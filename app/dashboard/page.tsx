@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { listHabits, listLogs, todayISO } from '../lib/storage';
 import type { Habit } from '../lib/storage';
+import { useI18n } from '../lib/i18n';
 import {
   BarChart,
   Bar,
@@ -50,6 +51,7 @@ function calcStreak(days: DayCell[]): number {
 }
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [period, setPeriod] = useState<7 | 14 | 30>(7);
   const [ready, setReady] = useState(false);
@@ -130,8 +132,8 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Analiza tu progreso y mejora continua</p>
+          <h1 className="text-2xl font-semibold">{t('dashboard.title')}</h1>
+          <p className="text-gray-600 mt-1">{t('dashboard.subtitle')}</p>
         </div>
         
         {/* Selector de período */}
@@ -146,7 +148,7 @@ export default function DashboardPage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {n} días
+              {n} {t('dashboard.days')}
             </button>
           ))}
         </div>
@@ -155,19 +157,19 @@ export default function DashboardPage() {
       {/* Estadísticas generales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
-          <p className="text-sm text-indigo-700 font-medium">Hábitos activos</p>
+          <p className="text-sm text-indigo-700 font-medium">{t('dashboard.activeHabits')}</p>
           <p className="text-3xl font-bold text-indigo-900 mt-1">{stats.totalHabits}</p>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
-          <p className="text-sm text-green-700 font-medium">Total registros</p>
+          <p className="text-sm text-green-700 font-medium">{t('dashboard.totalRecords')}</p>
           <p className="text-3xl font-bold text-green-900 mt-1">{stats.totalLogs}</p>
         </div>
         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm text-blue-700 font-medium">Cumplimiento promedio</p>
+          <p className="text-sm text-blue-700 font-medium">{t('dashboard.avgCompletion')}</p>
           <p className="text-3xl font-bold text-blue-900 mt-1">{stats.avgCompletion}%</p>
         </div>
         <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4">
-          <p className="text-sm text-yellow-700 font-medium">Mejor racha</p>
+          <p className="text-sm text-yellow-700 font-medium">{t('dashboard.bestStreak')}</p>
           <p className="text-3xl font-bold text-yellow-900 mt-1">{stats.bestStreak} 🔥</p>
         </div>
       </div>
@@ -177,17 +179,17 @@ export default function DashboardPage() {
         <div className="text-center py-12 bg-white border-2 border-dashed border-gray-300 rounded-xl">
           <div className="text-6xl mb-4">📊</div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No hay datos para mostrar
+            {t('dashboard.noData')}
           </h3>
           <p className="text-gray-600">
-            Crea hábitos y regístralos para ver tus estadísticas aquí
+            {t('dashboard.noDataDesc')}
           </p>
         </div>
       ) : (
         <div className="grid gap-6">
           {/* Gráfico de barras - Actividad diaria */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">📊 Actividad Diaria</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('dashboard.dailyActivity')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={activityByDay}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -195,14 +197,14 @@ export default function DashboardPage() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="completados" fill="#8b5cf6" name="Hábitos completados" />
+                <Bar dataKey="completados" fill="#8b5cf6" name={t('dashboard.habitsCompleted')} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* Gráfico de líneas - Progreso acumulado */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">📈 Progreso Acumulado</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('dashboard.cumulativeProgress')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={cumulativeProgress}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -215,7 +217,7 @@ export default function DashboardPage() {
                   dataKey="total"
                   stroke="#10b981"
                   strokeWidth={3}
-                  name="Total de registros"
+                  name={t('dashboard.totalRecordsChart')}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -224,14 +226,14 @@ export default function DashboardPage() {
           {/* Radar - Cumplimiento por hábito */}
           {radarData.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <h3 className="text-lg font-semibold mb-4">🎯 Cumplimiento por Hábito</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('dashboard.habitCompletion')}</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <RadarChart data={radarData}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="habit" />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} />
                   <Radar
-                    name="Cumplimiento %"
+                    name={t('dashboard.completionPercent')}
                     dataKey="cumplimiento"
                     stroke="#3b82f6"
                     fill="#3b82f6"
@@ -249,7 +251,7 @@ export default function DashboardPage() {
       {/* Detalle por hábito */}
       {habits.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Detalle por Hábito</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('dashboard.habitDetail')}</h2>
           <div className="grid gap-4">
             {rows.map((row) => (
               <section key={row.habit.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
@@ -257,20 +259,20 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">{row.habit.title}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      Meta: {row.habit.goalPerWeek}/sem · Tipo:{' '}
-                      {row.habit.type === 'check' ? 'Hábito' : 'Cantidad'}
+                      {t('habits.goal')}: {row.habit.goalPerWeek}/{t('common.week')} · {t('dashboard.habitType')}:{' '}
+                      {row.habit.type === 'check' ? t('dashboard.checkHabit') : t('dashboard.quantityHabit')}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="text-sm text-gray-600">Progreso</p>
+                        <p className="text-sm text-gray-600">{t('dashboard.progress')}</p>
                         <p className="text-xl font-bold text-gray-900">
                           {row.hits}/{row.habit.goalPerWeek}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-gray-600">Racha</p>
+                        <p className="text-sm text-gray-600">{t('habits.streak')}</p>
                         <p className="text-xl font-bold text-orange-600">
                           {row.streak} 🔥
                         </p>
@@ -284,7 +286,7 @@ export default function DashboardPage() {
                     </div>
                     {row.habit.type === 'number' && (
                       <p className="text-sm text-gray-600">
-                        Total período: {row.sum}
+                        {t('habits.totalPeriod')}: {row.sum}
                       </p>
                     )}
                   </div>
@@ -296,7 +298,7 @@ export default function DashboardPage() {
                     <div
                       key={idx}
                       className="flex flex-col items-center min-w-[3rem]"
-                      title={`${c.date}: ${c.done ? (c.value ?? 'Completado') : 'No completado'}`}
+                      title={`${c.date}: ${c.done ? (c.value ?? t('common.completed')) : 'No ' + t('common.completed').toLowerCase()}`}
                     >
                       <span className="text-xs text-gray-500 mb-1">{c.label}</span>
                       <div

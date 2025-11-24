@@ -16,7 +16,8 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { getCategoryLabel, type Transaction } from '../lib/storage';
+import { type Transaction } from '../lib/storage';
+import { useI18n } from '../lib/i18n';
 
 type Props = {
   transactions: Transaction[];
@@ -29,6 +30,8 @@ const COLORS = [
 ];
 
 export default function FinanceCharts({ transactions, period }: Props) {
+  const { t } = useI18n();
+
   // Filtrar transacciones según período
   const filteredTransactions = useMemo(() => {
     if (period === 'all') return transactions;
@@ -58,11 +61,11 @@ export default function FinanceCharts({ transactions, period }: Props) {
 
     return Object.entries(grouped)
       .map(([category, amount]) => ({
-        name: getCategoryLabel(category as any),
+        name: t(`finance.categories.${category}`),
         value: amount,
       }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredTransactions]);
+  }, [filteredTransactions, t]);
 
   // Datos para gráfico de barras (ingresos vs gastos por mes)
   const monthlyComparison = useMemo(() => {
@@ -99,7 +102,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
   if (filteredTransactions.length === 0) {
     return (
       <div className="text-sm text-gray-500 bg-white border border-gray-200 rounded-xl p-8 text-center">
-        No hay datos para mostrar en este período.
+        {t('finance.noDataPeriod')}
       </div>
     );
   }
@@ -109,7 +112,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
       {/* Gráfico de Pastel - Gastos por categoría */}
       {expensesByCategory.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">Gastos por Categoría</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('finance.charts.expensesByCategory')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -136,7 +139,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
       {/* Gráfico de Barras - Ingresos vs Gastos */}
       {monthlyComparison.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">Ingresos vs Gastos por Mes</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('finance.charts.incomeVsExpense')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyComparison}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -144,8 +147,8 @@ export default function FinanceCharts({ transactions, period }: Props) {
               <YAxis />
               <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
               <Legend />
-              <Bar dataKey="income" fill="#10b981" name="Ingresos" />
-              <Bar dataKey="expense" fill="#ef4444" name="Gastos" />
+              <Bar dataKey="income" fill="#10b981" name={t('finance.income')} />
+              <Bar dataKey="expense" fill="#ef4444" name={t('finance.expenses')} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -154,7 +157,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
       {/* Gráfico de Líneas - Balance acumulado */}
       {balanceOverTime.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">Balance Acumulado</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('finance.charts.cumulativeBalance')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={balanceOverTime}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -167,7 +170,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
                 dataKey="balance"
                 stroke="#8b5cf6"
                 strokeWidth={2}
-                name="Balance"
+                name={t('finance.balance')}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -176,7 +179,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
 
       {/* Tabla de top gastos */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4">Top 5 Categorías de Gasto</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('finance.charts.topCategories')}</h3>
         <div className="space-y-2">
           {expensesByCategory.slice(0, 5).map((cat, index) => (
             <div key={cat.name} className="flex items-center justify-between">
@@ -197,3 +200,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
     </div>
   );
 }
+
+
+
+

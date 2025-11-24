@@ -9,7 +9,7 @@ export type Habit = {
   goalPerWeek: number;
   type: 'check' | 'number';
   createdAt: string;
-  userId: string; // ← Asociar al usuario
+  userId: string;
 };
 
 export type HabitLog = {
@@ -18,7 +18,7 @@ export type HabitLog = {
   date: string;
   value?: number;
   done?: boolean;
-  userId: string; // ← Asociar al usuario
+  userId: string;
 };
 
 export type TransactionType = 'income' | 'expense';
@@ -36,29 +36,24 @@ export type Transaction = {
   description: string;
   date: string;
   createdAt: string;
-  userId: string; // ← Asociar al usuario
+  userId: string;
 };
 
-// Claves de localStorage
 const HABITS_KEY = 'tueje_habits';
 const LOGS_KEY = 'tueje_habit_logs';
 const TRANSACTIONS_KEY = 'tueje_transactions';
 
-// 💡 Nueva utilidad para notificar a toda la aplicación
 function notifyDataChanged() {
   if (typeof window !== 'undefined') {
-    // Usamos el evento AUTH_EVENT para señalizar cambios de datos
     window.dispatchEvent(new Event(AUTH_EVENT)); 
   }
 }
 
-// Obtener ID del usuario actual
 function getCurrentUserId(): string | null {
   const user = getCurrentUser();
   return user?.id || null;
 }
 
-// Funciones auxiliares (loadJSON, saveJSON, uid, todayISO, etc.)
 function loadJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -82,7 +77,6 @@ export function todayISO(): string {
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
-
 
 // ===== FUNCIONES DE HÁBITOS =====
 
@@ -153,7 +147,6 @@ export function listTransactions(): Transaction[] {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  // ✅ FIX: Se define la variable local allTransactions
   const allTransactions = loadJSON<Transaction[]>(TRANSACTIONS_KEY, []); 
   return allTransactions.filter(t => t.userId === userId);
 }
@@ -193,8 +186,7 @@ export function deleteTransaction(id: string) {
   notifyDataChanged();
 }
 
-
-// ===== UTILIDADES Y CATEGORÍAS (Se mantienen igual) =====
+// ===== CATEGORÍAS =====
 
 export const INCOME_CATEGORIES = [
   { value: 'salary', label: 'Salario' },
@@ -214,7 +206,10 @@ export const EXPENSE_CATEGORIES = [
   { value: 'other-expense', label: 'Otros gastos' },
 ] as const;
 
+// ⚠️ NOTA: Esta función usa las etiquetas estáticas en español por simplicidad.
+// Para internacionalizar completamente, se debería usar el hook useI18n en los componentes.
 export function getCategoryLabel(category: TransactionCategory): string {
   const allCategories = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
   return allCategories.find(c => c.value === category)?.label || category;
 }
+

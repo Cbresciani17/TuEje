@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import HabitCard from '../components/HabitCard';
 import type { Habit } from '../lib/storage';
-// 💡 Importar AUTH_EVENT
 import { deleteHabit, listHabits, listLogs, saveHabit, todayISO, uid } from '../lib/storage';
 import { AUTH_EVENT } from '../lib/auth';
+import { useI18n } from '../lib/i18n';
 
 type FormState = {
   title: string;
@@ -16,22 +16,20 @@ type FormState = {
 };
 
 export default function HabitsPage() {
+  const { t } = useI18n();
   const [form, setForm] = useState<FormState>({ title: '', goalPerWeek: 3, type: 'check' });
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
 
-  // 🔁 Refresco centralizado (hábitos + logs)
   const refresh = useCallback(() => {
     setHabits(listHabits());
     setLogs(listLogs());
   }, []);
 
-  // Carga inicial y Suscripción a Eventos (FIX)
   useEffect(() => {
-    refresh(); // Carga inicial
+    refresh();
     
-    // ✅ Escuchar eventos de cambio de datos (AUTH_EVENT, storage, focus)
     const onDataChanged = () => refresh();
 
     window.addEventListener(AUTH_EVENT, onDataChanged);
@@ -45,10 +43,9 @@ export default function HabitsPage() {
     };
   }, [refresh]);
 
-
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return alert('Escribe un título');
+    if (!form.title.trim()) return alert(t('habits.habitTitle'));
 
     const h: Habit = {
       id: uid(),
@@ -56,23 +53,20 @@ export default function HabitsPage() {
       goalPerWeek: Number(form.goalPerWeek) || 1,
       type: form.type,
       createdAt: new Date().toISOString(),
-      // @ts-expect-error: userId lo inyecta storage al persistir (si así lo implementaste).
+      // @ts-expect-error: userId lo inyecta storage al persistir
       userId: undefined,
     };
     saveHabit(h);
     
-    // ❌ Ya no necesitas llamar a refresh() aquí, el evento en storage.ts lo hace
     setForm({ title: '', goalPerWeek: 3, type: 'check' });
     setShowForm(false);
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('¿Eliminar este hábito y todos sus registros?')) return;
+    if (!confirm(t('habits.deleteConfirm'))) return;
     deleteHabit(id);
-    // ❌ Ya no necesitas llamar a refresh() aquí
   };
 
-  // Estadísticas (se mantienen igual)
   const stats = useMemo(() => {
     const today = todayISO();
     const completedToday = logs.filter((l) => l.date === today).length;
@@ -100,29 +94,29 @@ export default function HabitsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold">Hábitos</h1>
-          <p className="text-gray-600 mt-1">Construye mejores rutinas día a día</p>
+          <h1 className="text-2xl font-semibold">{t('habits.title')}</h1>
+          <p className="text-gray-600 mt-1">{t('habits.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
           className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium shadow hover:bg-indigo-700 transition"
         >
-          {showForm ? '✕ Cancelar' : '➕ Nuevo hábito'}
+          {showForm ? `✕ ${t('common.cancel')}` : `➕ ${t('habits.newHabit')}`}
         </button>
       </div>
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
-          <p className="text-sm text-indigo-700 font-medium">Total de hábitos</p>
+          <p className="text-sm text-indigo-700 font-medium">{t('habits.stats.total')}</p>
           <p className="text-3xl font-bold text-indigo-900 mt-1">{stats.total}</p>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
-          <p className="text-sm text-green-700 font-medium">Completados hoy</p>
+          <p className="text-sm text-green-700 font-medium">{t('habits.stats.completedToday')}</p>
           <p className="text-3xl font-bold text-green-900 mt-1">{stats.completedToday} ✅</p>
         </div>
         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm text-blue-700 font-medium">Cumplimiento semanal</p>
+          <p className="text-sm text-blue-700 font-medium">{t('habits.stats.weeklyCompletion')}</p>
           <p className="text-3xl font-bold text-blue-900 mt-1">{stats.weeklyCompletion}%</p>
         </div>
       </div>
@@ -130,17 +124,17 @@ export default function HabitsPage() {
       {/* Formulario de creación */}
       {showForm && (
         <form onSubmit={handleCreate} className="mb-6 bg-white border-2 border-indigo-200 rounded-xl p-6 shadow-lg">
-          <h3 className="text-lg font-semibold mb-4">Crear nuevo hábito</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('habits.createTitle')}</h3>
 
           <div className="grid gap-4">
             {/* Título */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Título del hábito
+                {t('habits.habitTitle')}
               </label>
               <input
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Ej: Hacer ejercicio, leer 30 min, meditar..."
+                placeholder={t('habits.habitPlaceholder')}
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 autoFocus
@@ -151,7 +145,7 @@ export default function HabitsPage() {
               {/* Meta semanal */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta semanal (veces)
+                  {t('habits.weeklyGoal')}
                 </label>
                 <input
                   type="number"
@@ -166,7 +160,7 @@ export default function HabitsPage() {
               {/* Tipo */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de registro
+                  {t('habits.recordType')}
                 </label>
                 <select
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500"
@@ -175,8 +169,8 @@ export default function HabitsPage() {
                     setForm((f) => ({ ...f, type: e.target.value as 'check' | 'number' }))
                   }
                 >
-                  <option value="check">✅ Hecho / No hecho</option>
-                  <option value="number">🔢 Cantidad (horas, km, etc.)</option>
+                  <option value="check">{t('habits.checkType')}</option>
+                  <option value="number">{t('habits.numberType')}</option>
                 </select>
               </div>
             </div>
@@ -188,13 +182,13 @@ export default function HabitsPage() {
                 onClick={() => setShowForm(false)}
                 className="px-5 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 className="px-5 py-2 rounded-lg bg-indigo-600 text-white font-medium shadow hover:bg-indigo-700 transition"
               >
-                ✨ Crear hábito
+                {t('habits.createButton')}
               </button>
             </div>
           </div>
@@ -207,16 +201,16 @@ export default function HabitsPage() {
           <div className="text-center py-12 bg-white border-2 border-dashed border-gray-300 rounded-xl">
             <div className="text-6xl mb-4">🎯</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Aún no tienes hábitos
+              {t('habits.noHabits')}
             </h3>
             <p className="text-gray-600 mb-4">
-              Crea tu primer hábito para empezar a construir mejores rutinas
+              {t('habits.noHabitsDesc')}
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-medium shadow hover:bg-indigo-700 transition"
             >
-              ➕ Crear mi primer hábito
+              {t('habits.createFirst')}
             </button>
           </div>
         ) : (
@@ -226,9 +220,9 @@ export default function HabitsPage() {
               <button
                 onClick={() => handleDelete(h.id)}
                 className="absolute top-4 right-4 text-xs text-red-600 hover:text-red-700 hover:underline font-medium"
-                title="Eliminar hábito"
+                title={t('common.delete')}
               >
-                🗑️ Eliminar
+                🗑️ {t('common.delete')}
               </button>
             </div>
           ))
@@ -239,13 +233,16 @@ export default function HabitsPage() {
       {habits.length > 0 && (
         <div className="mt-8 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6">
           <p className="text-sm text-indigo-900 font-medium">
-            💪 ¡Sigue así! La constancia es la clave del éxito.
+            {t('habits.motivation')}
           </p>
           <p className="text-sm text-indigo-700 mt-1">
-            Cada día que completes tus hábitos estarás un paso más cerca de tus metas.
+            {t('habits.motivationDesc')}
           </p>
         </div>
       )}
     </main>
   );
 }
+
+
+

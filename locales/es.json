@@ -80,11 +80,21 @@
     "registerToday": "📝 Registrar hoy",
     "wellDone": "¡Bien hecho!",
     "quantity": "Cantidad",
+    "aiAssistantTitle": "🎯 Asistente de Hábitos",
+    "aiAssistantPrompt": "Pregúntale al asistente cómo mejorar tus rutinas o cómo empezar un nuevo hábito.",
+    "aiAssistantButton": "Pedir Consejo al AI",
+    "aiAssistantPlaceholder": "Ej: ¿Cómo puedo dejar de procrastinar la lectura?",
+    "aiAssistantLoading": "Analizando hábitos...",
+    "aiAssistantError": "Error al contactar al asistente. Intenta de nuevo.",
+    "noHabitsContext": "No tienes hábitos registrados. El consejo será general.",
+    "habitsContext": "Tus hábitos actuales son: ",
+    "habitsAnalysisPlaceholder": "Escribe tu pregunta aquí...",
     "stats": {
       "total": "Total de hábitos",
       "completedToday": "Completados hoy",
       "weeklyCompletion": "Cumplimiento semanal"
     }
+    
   },
   "finance": {
     "title": "Finanzas",
@@ -135,7 +145,11 @@
     },
     "currencyDisplayTitle": "💱 Moneda de Visualización",
     "currencyDisplaySubtitle": "Todas las transacciones se mostrarán en esta moneda",
-    "original": "Original"
+    "original": "Original",
+    "aiAnalysisTitle": "💰 Análisis Financiero AI",
+    "aiAnalysisButton": "Generar Análisis AI",
+    "aiAnalysisLoading": "Analizando transacciones...",
+    "aiAnalysisError": "Error al generar el análisis. Intenta de nuevo."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -157,7 +171,11 @@
     "completionPercent": "Cumplimiento %",
     "habitType": "Tipo",
     "checkHabit": "Hábito",
-    "quantityHabit": "Cantidad"
+    "quantityHabit": "Cantidad",
+    "aiCoachTitle": "💪 Coach Motivacional AI",
+    "aiCoachButton": "Generar Mensaje Motivacional",
+    "aiCoachLoading": "Generando mensaje...",
+    "aiCoachError": "Error al contactar al coach. Intenta de nuevo."
   },
   "login": {
     "title": "TuEje",

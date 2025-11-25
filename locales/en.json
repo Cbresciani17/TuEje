@@ -76,6 +76,15 @@
     "totalPeriod": "Total period",
     "motivation": "💪 Keep it up! Consistency is the key to success.",
     "motivationDesc": "Every day you complete your habits you'll be one step closer to your goals.",
+    "aiAssistantTitle": "🎯 Habit Assistant",
+    "aiAssistantPrompt": "Ask the assistant how to improve your routines or start a new habit.",
+    "aiAssistantButton": "Ask AI for Advice",
+    "aiAssistantPlaceholder": "E.g.: How can I stop procrastinating reading?",
+    "aiAssistantLoading": "Analyzing habits...",
+    "aiAssistantError": "Error contacting the assistant. Please try again.",
+    "noHabitsContext": "You have no habits registered. The advice will be general.",
+    "habitsContext": "Your current habits are: ",
+    "habitsAnalysisPlaceholder": "Write your question here...",
     "deleteConfirm": "Delete this habit and all its records?",
     "registerToday": "📝 Register today",
     "wellDone": "Well done!",
@@ -135,7 +144,11 @@
     },
     "currencyDisplayTitle": "💱 Currency Display",
     "currencyDisplaySubtitle": "All transactions will be shown in this currency",
-    "original": "Original"
+    "original": "Original",
+    "aiAnalysisTitle": "💰 AI Financial Analysis",
+    "aiAnalysisButton": "Generate AI Analysis",
+    "aiAnalysisLoading": "Analyzing transactions...",
+    "aiAnalysisError": "Error generating analysis. Please try again."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -157,7 +170,11 @@
     "completionPercent": "Completion %",
     "habitType": "Type",
     "checkHabit": "Habit",
-    "quantityHabit": "Quantity"
+    "quantityHabit": "Quantity",
+    "aiCoachTitle": "💪 AI Motivational Coach",
+    "aiCoachButton": "Generate Motivational Message",
+    "aiCoachLoading": "Generating message...",
+    "aiCoachError": "Error contacting the coach. Please try again."
   },
   "login": {
     "title": "TuEje",

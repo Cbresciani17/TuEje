@@ -23,17 +23,26 @@ export default function HabitCard({ habit }: { habit: Habit }) {
       } else {
         setValueToday(typeof today.value === 'number' ? today.value : null);
       }
+    } else {
+      // si no hay log de hoy, resetear estados
+      setDoneToday(false);
+      setValueToday(null);
     }
   }, [habit.id, habit.type, date]);
 
   const handleLog = () => {
+    // base común del log, con userId correcto
+    const logBase = {
+      id: `${habit.id}-${date}`,
+      habitId: habit.id,
+      date,
+      userId: habit.userId, // ✅ aquí va el userId real
+    };
+
     if (habit.type === 'check') {
-      saveLog({ 
-        id: `${habit.id}-${date}`, 
-        habitId: habit.id, 
-        date, 
-        done: true, 
-        userId: '' // ← FIX: Agregado userId
+      saveLog({
+        ...logBase,
+        done: true,
       });
       setDoneToday(true);
       return;
@@ -44,12 +53,10 @@ export default function HabitCard({ habit }: { habit: Habit }) {
       alert(t('finance.validAmount'));
       return;
     }
-    saveLog({ 
-      id: `${habit.id}-${date}`, 
-      habitId: habit.id, 
-      date, 
-      value: v, 
-      userId: '' // ← FIX: Agregado userId
+
+    saveLog({
+      ...logBase,
+      value: v,
     });
     setValue(0);
     setValueToday(v);
@@ -65,7 +72,9 @@ export default function HabitCard({ habit }: { habit: Habit }) {
               {t('habits.goal')}: {habit.goalPerWeek}/{t('common.week')}
             </span>
             <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-              {habit.type === 'check' ? t('habits.checkType') : t('habits.numberType')}
+              {habit.type === 'check'
+                ? t('habits.checkType')
+                : t('habits.numberType')}
             </span>
           </div>
         </div>
@@ -78,12 +87,14 @@ export default function HabitCard({ habit }: { habit: Habit }) {
               onClick={handleLog}
               disabled={doneToday}
               className={`flex-1 px-5 py-3 rounded-lg text-white font-medium transition shadow-sm ${
-                doneToday 
-                  ? 'bg-gray-400 cursor-not-allowed' 
+                doneToday
+                  ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow'
               }`}
             >
-              {doneToday ? `✅ ${t('common.completed')}` : t('habits.registerToday')}
+              {doneToday
+                ? `✅ ${t('common.completed')}`
+                : t('habits.registerToday')}
             </button>
             {doneToday && (
               <div className="flex items-center gap-1 text-sm text-green-600 font-medium">

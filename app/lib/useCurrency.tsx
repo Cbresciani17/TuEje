@@ -11,15 +11,16 @@ export const CURRENCIES = [
 
 export async function getExchangeRates(baseCurrency: string): Promise<Record<string, number>> {
   try {
-    // 💡 URL de ejemplo de tu código original (se asume que la API existe)
-    const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${baseCurrency}`);
+    const res = await fetch(
+      `https://api.exchangerate-api.com/v4/latest/${baseCurrency}`
+    );
     if (!res.ok) throw new Error('Failed to fetch exchange rates');
     const data = await res.json();
     return data.rates;
   } catch (error) {
-    console.error("Error fetching exchange rates:", error);
-    // Retornar tasas por defecto si la API falla (1:1 con USD para el demo)
-    return { USD: 1, EUR: 0.9, CLP: 950, ARS: 360, ...Object.fromEntries(CURRENCIES.map(c => [c.code, 1])) };
+    console.error("Error fetching exchange rates, returning default rates:", error);
+    // Retornar tasas por defecto si la API falla (asumiendo USD es base 1)
+    return { USD: 1, EUR: 0.9, CLP: 950, ARS: 360 };
   }
 }
 
@@ -33,19 +34,10 @@ export function convertAmount(
     return amount;
   }
   
-  // Normalizar a USD (asumiendo que rates es relativo a USD, según tu código base)
-  const rateToUSD = rates[fromCurrency] || 1;
-  const rateFromUSD = rates[toCurrency] || 1;
-  
-  // Esta lógica asume que las tasas de la API son relativas a la base (USD en tu useEffect)
-  if (rates['USD']) {
-      // Valor base en USD (asumiendo USD es 1)
-      const amountInUSD = amount / (rates[fromCurrency] || 1);
-      // Conversión a la moneda destino
-      return amountInUSD * (rates[toCurrency] || 1);
-  }
-  
-  return amount;
+  // Normalizar a USD (asumiendo que rates se cargó con USD como base, rates['USD'] = 1)
+  const amountInUSD = amount / (rates[fromCurrency] || 1);
+  // Convertir a la moneda destino
+  return amountInUSD * (rates[toCurrency] || 1);
 }
 
 export function getCurrencySymbol(code: string): string {

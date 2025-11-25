@@ -28,8 +28,13 @@ export default function HabitCard({ habit }: { habit: Habit }) {
 
   const handleLog = () => {
     if (habit.type === 'check') {
-      // CORRECCIÓN 1: Se añade userId: ''
-      saveLog({ id: `${habit.id}-${date}`, habitId: habit.id, date, done: true, userId: '' });
+      saveLog({ 
+        id: `${habit.id}-${date}`, 
+        habitId: habit.id, 
+        date, 
+        done: true, 
+        userId: '' // ← FIX: Agregado userId
+      });
       setDoneToday(true);
       return;
     }
@@ -39,8 +44,13 @@ export default function HabitCard({ habit }: { habit: Habit }) {
       alert(t('finance.validAmount'));
       return;
     }
-    // CORRECCIÓN 2: Se añade userId: ''
-    saveLog({ id: `${habit.id}-${date}`, habitId: habit.id, date, value: v, userId: '' });
+    saveLog({ 
+      id: `${habit.id}-${date}`, 
+      habitId: habit.id, 
+      date, 
+      value: v, 
+      userId: '' // ← FIX: Agregado userId
+    });
     setValue(0);
     setValueToday(v);
   };

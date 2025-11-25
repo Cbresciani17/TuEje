@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { Habit } from '../lib/storage';
 import { listLogs, saveLog, todayISO } from '../lib/storage';
 import { useI18n } from '../lib/i18n';
+import { getCurrentUser } from '../lib/auth';
 
 export default function HabitCard({ habit }: { habit: Habit }) {
   const { t } = useI18n();
@@ -23,25 +24,26 @@ export default function HabitCard({ habit }: { habit: Habit }) {
       } else {
         setValueToday(typeof today.value === 'number' ? today.value : null);
       }
-    } else {
-      setDoneToday(false);
-      setValueToday(null);
     }
   }, [habit.id, habit.type, date]);
 
+  // Obtiene el usuario actual → necesario para userId
+  const user = getCurrentUser();
+  const userId = user?.id || "";
+
   const handleLog = () => {
-    // ✅ base común con userId incluido
-    const baseLog = {
-      id: `${habit.id}-${date}`,
-      habitId: habit.id,
-      date,
-      userId: habit.userId,
-    };
+    if (!userId) {
+      alert("Error: Usuario no identificado");
+      return;
+    }
 
     if (habit.type === 'check') {
       saveLog({
-        ...baseLog,
+        id: `${habit.id}-${date}`,
+        habitId: habit.id,
+        date,
         done: true,
+        userId, // ← FIX obligatorio
       });
       setDoneToday(true);
       return;
@@ -54,8 +56,11 @@ export default function HabitCard({ habit }: { habit: Habit }) {
     }
 
     saveLog({
-      ...baseLog,
+      id: `${habit.id}-${date}`,
+      habitId: habit.id,
+      date,
       value: v,
+      userId, // ← FIX obligatorio
     });
 
     setValue(0);
@@ -72,9 +77,7 @@ export default function HabitCard({ habit }: { habit: Habit }) {
               {t('habits.goal')}: {habit.goalPerWeek}/{t('common.week')}
             </span>
             <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-              {habit.type === 'check'
-                ? t('habits.checkType')
-                : t('habits.numberType')}
+              {habit.type === 'check' ? t('habits.checkType') : t('habits.numberType')}
             </span>
           </div>
         </div>
@@ -92,10 +95,9 @@ export default function HabitCard({ habit }: { habit: Habit }) {
                   : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow'
               }`}
             >
-              {doneToday
-                ? `✅ ${t('common.completed')}`
-                : t('habits.registerToday')}
+              {doneToday ? `✅ ${t('common.completed')}` : t('habits.registerToday')}
             </button>
+
             {doneToday && (
               <div className="flex items-center gap-1 text-sm text-green-600 font-medium">
                 <span className="text-xl">🎉</span>
@@ -109,16 +111,18 @@ export default function HabitCard({ habit }: { habit: Habit }) {
               type="number"
               min={0}
               value={value}
-              onChange={(e) => setValue(Number(e.target.value))}
+              onChange={e => setValue(Number(e.target.value))}
               placeholder={t('habits.quantity')}
               className="w-32 px-3 py-3 border-2 border-gray-300 rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
+
             <button
               onClick={handleLog}
               className="flex-1 px-5 py-3 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition shadow-sm hover:shadow"
             >
               {t('common.register')}
             </button>
+
             {valueToday !== null && (
               <div className="flex items-center gap-1 text-sm text-green-600 font-medium">
                 <span className="text-xl">✅</span>

@@ -1,3 +1,4 @@
+// app/components/HabitCard.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -27,7 +28,8 @@ export default function HabitCard({ habit }: { habit: Habit }) {
 
   const handleLog = () => {
     if (habit.type === 'check') {
-      saveLog({ id: `${habit.id}-${date}`, habitId: habit.id, date, done: true });
+      // CORRECCIÓN 1: Añadir userId: '' para satisfacer el tipo HabitLog
+      saveLog({ id: `${habit.id}-${date}`, habitId: habit.id, date, done: true, userId: '' });
       setDoneToday(true);
       return;
     }
@@ -37,7 +39,8 @@ export default function HabitCard({ habit }: { habit: Habit }) {
       alert(t('finance.validAmount'));
       return;
     }
-    saveLog({ id: `${habit.id}-${date}`, habitId: habit.id, date, value: v });
+    // CORRECCIÓN 2: Añadir userId: '' para satisfacer el tipo HabitLog
+    saveLog({ id: `${habit.id}-${date}`, habitId: habit.id, date, value: v, userId: '' });
     setValue(0);
     setValueToday(v);
   };
@@ -107,5 +110,3 @@ export default function HabitCard({ habit }: { habit: Habit }) {
     </div>
   );
 }
-
-

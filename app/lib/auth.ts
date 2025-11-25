@@ -127,7 +127,7 @@ export function isAuthenticated(): boolean {
 }
 
 // ===== LÓGICA DE SINCRONIZACIÓN NEXTAUTH/SSO (Fija la persistencia) =====
-export function syncNextAuthUser(sessionUser: { email: string; name?: string | null; image?: string | null }): { id: string; email: string; name: string } | null {
+export function syncNextAuthUser(sessionUser: { email: string | null | undefined; name?: string | null; image?: string | null }): { id: string; email: string; name: string } | null {
   if (typeof window === 'undefined' || !sessionUser.email || !sessionUser.name) return null;
 
   const users = loadUsers();

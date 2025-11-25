@@ -101,7 +101,12 @@ export default function Header() {
     let currentUser = getCurrentUser();
 
     if (isSSO && session.user.email && session.user.name) {
-      const newSyncedUser = syncNextAuthUser(session.user);
+      const newSyncedUser = syncNextAuthUser({
+        email: session.user.email || "",
+        name: session.user.name || "",
+        image: session.user.image || undefined,
+      });
+
       if (newSyncedUser && newSyncedUser.id !== currentUser?.id) {
         setSyncedUser(newSyncedUser);
         currentUser = newSyncedUser;

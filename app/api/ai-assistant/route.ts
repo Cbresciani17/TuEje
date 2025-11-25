@@ -1,17 +1,14 @@
 // app/api/ai-assistant/route.ts
-import { OpenAI } from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
-
-// Inicializa la configuración de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 export async function POST(req: Request) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
       return NextResponse.json(
-        { error: 'OpenAI API Key no configurada' },
+        { error: 'Gemini API Key no configurada' },
         { status: 500 }
       );
     }
@@ -25,29 +22,23 @@ export async function POST(req: Request) {
       );
     }
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo', // Puedes usar gpt-4-turbo si tienes acceso
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: context,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 300,
-    });
+    // Inicializamos Gemini
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    return NextResponse.json({
-      response: completion.choices[0].message.content,
-    });
-  } catch (error) {
-    console.error('Error en la API de OpenAI:', error);
+    // Unimos el prompt del sistema con el contexto
+    const finalPrompt = `${systemPrompt}\n\nContexto del usuario:\n${context}`;
+
+    const result = await model.generateContent(finalPrompt);
+    const response = result.response.text();
+
+    return NextResponse.json({ response });
+
+  } catch (error: any) {
+    console.error("Error en API Gemini:", error);
+
     return NextResponse.json(
-      { error: 'Error al comunicarse con el asistente AI' },
+      { error: "Error al comunicarse con Gemini. Revisa tu clave o cuota." },
       { status: 500 }
     );
   }

@@ -24,24 +24,23 @@ export default function HabitCard({ habit }: { habit: Habit }) {
         setValueToday(typeof today.value === 'number' ? today.value : null);
       }
     } else {
-      // si no hay log de hoy, resetear estados
       setDoneToday(false);
       setValueToday(null);
     }
   }, [habit.id, habit.type, date]);
 
   const handleLog = () => {
-    // base común del log, con userId correcto
-    const logBase = {
+    // ✅ base común con userId incluido
+    const baseLog = {
       id: `${habit.id}-${date}`,
       habitId: habit.id,
       date,
-      userId: habit.userId, // ✅ aquí va el userId real
+      userId: habit.userId,
     };
 
     if (habit.type === 'check') {
       saveLog({
-        ...logBase,
+        ...baseLog,
         done: true,
       });
       setDoneToday(true);
@@ -55,9 +54,10 @@ export default function HabitCard({ habit }: { habit: Habit }) {
     }
 
     saveLog({
-      ...logBase,
+      ...baseLog,
       value: v,
     });
+
     setValue(0);
     setValueToday(v);
   };

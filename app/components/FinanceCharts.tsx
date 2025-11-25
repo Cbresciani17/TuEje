@@ -1,4 +1,3 @@
-// app/components/FinanceCharts.tsx
 'use client';
 
 import { useMemo } from 'react';
@@ -33,7 +32,6 @@ const COLORS = [
 export default function FinanceCharts({ transactions, period }: Props) {
   const { t } = useI18n();
 
-  // Filtrar transacciones según período
   const filteredTransactions = useMemo(() => {
     if (period === 'all') return transactions;
 
@@ -51,7 +49,6 @@ export default function FinanceCharts({ transactions, period }: Props) {
     return transactions.filter(t => new Date(t.date) >= cutoff);
   }, [transactions, period]);
 
-  // Datos para gráfico de pastel (gastos por categoría)
   const expensesByCategory = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.type === 'expense');
     const grouped = expenses.reduce((acc, t) => {
@@ -68,10 +65,9 @@ export default function FinanceCharts({ transactions, period }: Props) {
       .sort((a, b) => b.value - a.value);
   }, [filteredTransactions, t]);
 
-  // Datos para gráfico de barras (ingresos vs gastos por mes)
   const monthlyComparison = useMemo(() => {
     const grouped = filteredTransactions.reduce((acc, t) => {
-      const month = t.date.slice(0, 7); // yyyy-mm
+      const month = t.date.slice(0, 7);
       if (!acc[month]) {
         acc[month] = { month, income: 0, expense: 0 };
       }
@@ -86,7 +82,6 @@ export default function FinanceCharts({ transactions, period }: Props) {
     return Object.values(grouped).sort((a, b) => a.month.localeCompare(b.month));
   }, [filteredTransactions]);
 
-  // Datos para gráfico de líneas (balance acumulado)
   const balanceOverTime = useMemo(() => {
     const sorted = [...filteredTransactions].sort((a, b) => a.date.localeCompare(b.date));
     let balance = 0;
@@ -110,7 +105,6 @@ export default function FinanceCharts({ transactions, period }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Gráfico de Pastel - Gastos por categoría */}
       {expensesByCategory.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">{t('finance.charts.expensesByCategory')}</h3>
@@ -121,10 +115,7 @@ export default function FinanceCharts({ transactions, period }: Props) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                // FIX FINAL: Usar 'any' para el parámetro para ignorar el conflicto de tipo PieLabelRenderProps
-                label={({ name, percent }: any) => 
-                  `${name}: ${(percent * 100).toFixed(0)}%`
-                }
+                label={(entry: any) => `${entry.name}: ${(entry.percent * 100).toFixed(0)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -140,7 +131,6 @@ export default function FinanceCharts({ transactions, period }: Props) {
         </div>
       )}
 
-      {/* Gráfico de Barras - Ingresos vs Gastos */}
       {monthlyComparison.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">{t('finance.charts.incomeVsExpense')}</h3>
@@ -158,7 +148,6 @@ export default function FinanceCharts({ transactions, period }: Props) {
         </div>
       )}
 
-      {/* Gráfico de Líneas - Balance acumulado */}
       {balanceOverTime.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">{t('finance.charts.cumulativeBalance')}</h3>
@@ -181,7 +170,6 @@ export default function FinanceCharts({ transactions, period }: Props) {
         </div>
       )}
 
-      {/* Tabla de top gastos */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-4">{t('finance.charts.topCategories')}</h3>
         <div className="space-y-2">
